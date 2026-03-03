@@ -62,7 +62,7 @@ canvas { display: block; }
 🪙 Coins: <span id="coins">0</span> |
 🏆 Highscore: <span id="highscore">0</span>
 <br>
-<button onclick="goHome()">🏠 Home / Customize</button>
+<button onclick="goHome()">🏠 Home</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -84,19 +84,39 @@ canvas.height = window.innerHeight;
 let heroImg = new Image();
 heroImg.src = "../assets/hero.png";
 
-let bulletColor = localStorage.getItem("bulletColor") || "yellow";
-let bulletSize = parseInt(localStorage.getItem("bulletSize")) || 6;
+/* =============================
+   BULLET SYSTEM (NEW)
+============================= */
+
+let equipped = localStorage.getItem("equippedBullet") || "default";
+
+let bulletColor = "yellow";
+let bulletDamage = 1;
+let bulletSize = 6;
+
+if(equipped === "rare"){
+    bulletColor = "cyan";
+    bulletDamage = 2;
+    bulletSize = 8;
+}
+if(equipped === "epic"){
+    bulletColor = "violet";
+    bulletDamage = 3;
+    bulletSize = 10;
+}
+if(equipped === "legendary"){
+    bulletColor = "gold";
+    bulletDamage = 5;
+    bulletSize = 14;
+}
+
+/* ============================= */
 
 let coins = parseInt(localStorage.getItem("coins")) || 0;
 let highscore = parseInt(localStorage.getItem("highscore")) || 0;
 
 document.getElementById("coins").innerText = coins;
 document.getElementById("highscore").innerText = highscore;
-
-let bulletDamage = 1;
-if(bulletColor==="cyan") bulletDamage = 2;
-if(bulletColor==="purple") bulletDamage = 3;
-if(bulletColor==="gold") bulletDamage = 4;
 
 let player = {
     x: canvas.width/2,
@@ -171,12 +191,13 @@ function update(){
 
         enemies.forEach((e,ei)=>{
             if(Math.hypot(b.x-e.x,b.y-e.y)<25){
+
                 e.health -= bulletDamage;
                 bullets.splice(bi,1);
 
                 if(e.health<=0){
 
-                    // break animation
+                    // Explosion particles
                     for(let i=0;i<12;i++){
                         particles.push({
                             x:e.x,
@@ -249,12 +270,17 @@ function draw(){
     ctx.drawImage(heroImg,-w/2,-h/2,w,h);
     ctx.restore();
 
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = bulletColor;
+
     ctx.fillStyle = bulletColor;
     bullets.forEach(b=>{
         ctx.beginPath();
         ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
         ctx.fill();
     });
+
+    ctx.shadowBlur = 0;
 
     ctx.fillStyle="red";
     enemies.forEach(e=>{
