@@ -72,7 +72,7 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 let heroImg = new Image();
-heroImg.src = "assets/hero.png";
+heroImg.src = "../assets/hero.png";
 
 let bulletColor = localStorage.getItem("bulletColor") || "yellow";
 let bulletSize = parseInt(localStorage.getItem("bulletSize")) || 6;
@@ -268,3 +268,4 @@ loop();
 </script>
 </body>
 </html>
+
