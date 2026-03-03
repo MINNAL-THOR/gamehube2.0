@@ -84,9 +84,7 @@ canvas.height = window.innerHeight;
 let heroImg = new Image();
 heroImg.src = "../assets/hero.png";
 
-/* =============================
-   BULLET SYSTEM (NEW)
-============================= */
+/* ========= BULLET SYSTEM ========= */
 
 let equipped = localStorage.getItem("equippedBullet") || "default";
 
@@ -110,7 +108,7 @@ if(equipped === "legendary"){
     bulletSize = 14;
 }
 
-/* ============================= */
+/* ================================== */
 
 let coins = parseInt(localStorage.getItem("coins")) || 0;
 let highscore = parseInt(localStorage.getItem("highscore")) || 0;
@@ -185,11 +183,14 @@ function update(){
     player.x = Math.max(player.size/2, Math.min(canvas.width-player.size/2, player.x));
     player.y = Math.max(player.size/2, Math.min(canvas.height-player.size/2, player.y));
 
-    bullets.forEach((b,bi)=>{
+    for(let bi = bullets.length-1; bi>=0; bi--){
+        let b = bullets[bi];
         b.x+=b.dx;
         b.y+=b.dy;
 
-        enemies.forEach((e,ei)=>{
+        for(let ei = enemies.length-1; ei>=0; ei--){
+            let e = enemies[ei];
+
             if(Math.hypot(b.x-e.x,b.y-e.y)<25){
 
                 e.health -= bulletDamage;
@@ -197,7 +198,6 @@ function update(){
 
                 if(e.health<=0){
 
-                    // Explosion particles
                     for(let i=0;i<12;i++){
                         particles.push({
                             x:e.x,
@@ -213,16 +213,19 @@ function update(){
                     localStorage.setItem("coins",coins);
                     document.getElementById("coins").innerText = coins;
                 }
-            }
-        });
-    });
 
-    particles.forEach((p,pi)=>{
+                break;
+            }
+        }
+    }
+
+    for(let pi = particles.length-1; pi>=0; pi--){
+        let p = particles[pi];
         p.x += p.dx;
         p.y += p.dy;
         p.life--;
         if(p.life<=0) particles.splice(pi,1);
-    });
+    }
 
     enemies.forEach(e=>{
         let angle = Math.atan2(player.y-e.y, player.x-e.x);
