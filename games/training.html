@@ -1,223 +1,332 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Training Mode</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: radial-gradient(circle at center, #1e1e2f, #000);
-      color: white;
-      font-family: Arial, sans-serif;
-    }
+<title>Abu's Training Ground</title>
+<style>
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial;
+    color: white;
+    background: linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d);
+}
 
-    canvas {
-      display: block;
-    }
+canvas { display: block; }
 
-    .ui {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 18px;
-    }
+.ui {
+    position: absolute;
+    top: 10px;
+    left: 15px;
+    font-size: 18px;
+    background: rgba(0,0,0,0.4);
+    padding: 10px 15px;
+    border-radius: 10px;
+}
 
-    .shop {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
+.ui button{
+    margin-top:8px;
+    padding:5px 10px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
 
-    .shop button {
-      padding: 8px 15px;
-      margin: 5px;
-      border: none;
-      border-radius: 20px;
-      cursor: pointer;
-      font-weight: bold;
-    }
+#gameOverScreen {
+    display:none;
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#111;
+    padding:40px;
+    border-radius:15px;
+    text-align:center;
+    box-shadow:0 0 25px red;
+}
 
-    .scratch {
-      position: absolute;
-      width: 4px;
-      height: 20px;
-      border-radius: 2px;
-      animation: scratchAnim 0.4s linear forwards;
-    }
-
-    @keyframes scratchAnim {
-      0% { opacity: 1; transform: scale(1); }
-      100% { opacity: 0; transform: translateY(-20px) scale(1.5); }
-    }
-  </style>
+#gameOverScreen button {
+    padding:10px 20px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
+}
+</style>
 </head>
 <body>
 
 <div class="ui">
-  ❤️ HP: <span id="hp">100</span><br>
-  💰 Coins: <span id="coins">0</span><br>
-  🌊 Wave: <span id="wave">1</span>
-</div>
-
-<div class="shop">
-  <button onclick="setBullet('default')">Default (Free)</button>
-  <button onclick="buyBullet('rare')">Rare (1000)</button>
-  <button onclick="buyBullet('epic')">Epic (2000)</button>
-  <button onclick="buyBullet('legendary')">Legendary (3000)</button>
+❤️ Health: <span id="health">100</span> |
+🌊 Wave: <span id="wave">1</span> |
+🪙 Coins: <span id="coins">0</span> |
+🏆 Highscore: <span id="highscore">0</span>
+<br>
+<button onclick="goHome()">🏠 Home</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
 
+<div id="gameOverScreen">
+    <h2>💀 Game Over</h2>
+    <button onclick="restartGame()">Restart</button>
+    <button onclick="goHome()">Home</button>
+</div>
+
 <script>
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let coins = 0;
-let wave = 1;
-let playerHP = 100;
-
-const heroImg = new Image();
+let heroImg = new Image();
 heroImg.src = "../assets/hero.png";
 
-const player = {
-  x: canvas.width/2 - 40,
-  y: canvas.height - 120,
-  width: 80,
-  height: 80
+/* =============================
+   BULLET SYSTEM (NEW)
+============================= */
+
+let equipped = localStorage.getItem("equippedBullet") || "default";
+
+let bulletColor = "yellow";
+let bulletDamage = 1;
+let bulletSize = 6;
+
+if(equipped === "rare"){
+    bulletColor = "cyan";
+    bulletDamage = 2;
+    bulletSize = 8;
+}
+if(equipped === "epic"){
+    bulletColor = "violet";
+    bulletDamage = 3;
+    bulletSize = 10;
+}
+if(equipped === "legendary"){
+    bulletColor = "gold";
+    bulletDamage = 5;
+    bulletSize = 14;
+}
+
+/* ============================= */
+
+let coins = parseInt(localStorage.getItem("coins")) || 0;
+let highscore = parseInt(localStorage.getItem("highscore")) || 0;
+
+document.getElementById("coins").innerText = coins;
+document.getElementById("highscore").innerText = highscore;
+
+let player = {
+    x: canvas.width/2,
+    y: canvas.height/2,
+    size: 220,
+    speed: 4,
+    health: 100
 };
 
 let bullets = [];
 let enemies = [];
+let particles = [];
+let keys = {};
+let mouse = {x:0,y:0};
+let wave = 1;
+let gameOver = false;
 
-let ownedBullets = ["default"];
-let currentBullet = "default";
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-const bulletStats = {
-  default: { damage: 10, color: "white" },
-  rare: { damage: 20, color: "cyan" },
-  epic: { damage: 35, color: "violet" },
-  legendary: { damage: 60, color: "gold" }
-};
+document.addEventListener("mousemove", e=>{
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
 
-function setBullet(type){
-  if(ownedBullets.includes(type)){
-    currentBullet = type;
-  }
-}
+document.addEventListener("click", ()=> shoot());
 
-function buyBullet(type){
-  const prices = {
-    rare: 1000,
-    epic: 2000,
-    legendary: 3000
-  };
+function shoot(){
+    if(gameOver) return;
 
-  if(ownedBullets.includes(type)){
-    currentBullet = type;
-    return;
-  }
+    let angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
 
-  if(coins >= prices[type]){
-    coins -= prices[type];
-    ownedBullets.push(type);
-    currentBullet = type;
-    updateUI();
-  }
-}
-
-function updateUI(){
-  document.getElementById("coins").textContent = coins;
-  document.getElementById("wave").textContent = wave;
-  document.getElementById("hp").textContent = playerHP;
+    bullets.push({
+        x:player.x,
+        y:player.y,
+        dx:Math.cos(angle)*8,
+        dy:Math.sin(angle)*8,
+        size:bulletSize
+    });
 }
 
 function spawnEnemy(){
-  enemies.push({
-    x: Math.random() * (canvas.width - 50),
-    y: -50,
-    width: 50,
-    height: 50,
-    hp: 50 + wave * 10
-  });
-}
+    let edge = Math.floor(Math.random()*4);
+    let x,y;
 
-setInterval(spawnEnemy, 2000);
+    if(edge===0){x=0;y=Math.random()*canvas.height;}
+    if(edge===1){x=canvas.width;y=Math.random()*canvas.height;}
+    if(edge===2){x=Math.random()*canvas.width;y=0;}
+    if(edge===3){x=Math.random()*canvas.width;y=canvas.height;}
 
-canvas.addEventListener("click", e => {
-  bullets.push({
-    x: player.x + player.width/2 - 5,
-    y: player.y,
-    width: 10,
-    height: 20,
-    damage: bulletStats[currentBullet].damage,
-    color: bulletStats[currentBullet].color
-  });
-});
-
-function createScratchEffect(x, y, color){
-  for(let i=0;i<12;i++){
-    const scratch = document.createElement("div");
-    scratch.classList.add("scratch");
-    scratch.style.left = x + "px";
-    scratch.style.top = y + "px";
-    scratch.style.background = color;
-    scratch.style.transform = `rotate(${Math.random()*360}deg)`;
-    document.body.appendChild(scratch);
-
-    setTimeout(() => scratch.remove(), 400);
-  }
+    enemies.push({
+        x,y,
+        size:40,
+        speed:1.5 + wave*0.2,
+        health:3 + wave
+    });
 }
 
 function update(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.drawImage(heroImg, player.x, player.y, player.width, player.height);
+    if(keys["w"]) player.y -= player.speed;
+    if(keys["s"]) player.y += player.speed;
+    if(keys["a"]) player.x -= player.speed;
+    if(keys["d"]) player.x += player.speed;
 
-  bullets.forEach((b, bi) => {
-    b.y -= 7;
-    ctx.fillStyle = b.color;
-    ctx.fillRect(b.x, b.y, b.width, b.height);
+    player.x = Math.max(player.size/2, Math.min(canvas.width-player.size/2, player.x));
+    player.y = Math.max(player.size/2, Math.min(canvas.height-player.size/2, player.y));
 
-    enemies.forEach((e, ei) => {
-      if(b.x < e.x + e.width &&
-         b.x + b.width > e.x &&
-         b.y < e.y + e.height &&
-         b.y + b.height > e.y){
+    bullets.forEach((b,bi)=>{
+        b.x+=b.dx;
+        b.y+=b.dy;
 
-        e.hp -= b.damage;
-        createScratchEffect(e.x + e.width/2, e.y + e.height/2, b.color);
-        bullets.splice(bi,1);
+        enemies.forEach((e,ei)=>{
+            if(Math.hypot(b.x-e.x,b.y-e.y)<25){
 
-        if(e.hp <= 0){
-          enemies.splice(ei,1);
-          coins += 100;
-          if(coins % 500 === 0) wave++;
-          updateUI();
-        }
-      }
+                e.health -= bulletDamage;
+                bullets.splice(bi,1);
+
+                if(e.health<=0){
+
+                    // Explosion particles
+                    for(let i=0;i<12;i++){
+                        particles.push({
+                            x:e.x,
+                            y:e.y,
+                            dx:(Math.random()-0.5)*6,
+                            dy:(Math.random()-0.5)*6,
+                            life:30
+                        });
+                    }
+
+                    enemies.splice(ei,1);
+                    coins+=5;
+                    localStorage.setItem("coins",coins);
+                    document.getElementById("coins").innerText = coins;
+                }
+            }
+        });
     });
-  });
 
-  enemies.forEach(e => {
-    e.y += 2 + wave*0.3;
-    ctx.fillStyle = "red";
-    ctx.fillRect(e.x, e.y, e.width, e.height);
+    particles.forEach((p,pi)=>{
+        p.x += p.dx;
+        p.y += p.dy;
+        p.life--;
+        if(p.life<=0) particles.splice(pi,1);
+    });
 
-    if(e.y > canvas.height){
-      playerHP -= 10;
-      enemies.shift();
-      updateUI();
+    enemies.forEach(e=>{
+        let angle = Math.atan2(player.y-e.y, player.x-e.x);
+        e.x+=Math.cos(angle)*e.speed;
+        e.y+=Math.sin(angle)*e.speed;
+
+        if(Math.hypot(player.x-e.x,player.y-e.y)<50){
+            player.health-=0.5;
+            document.getElementById("health").innerText = Math.floor(player.health);
+        }
+    });
+
+    if(player.health<=0 && !gameOver){
+        gameOver=true;
+        document.getElementById("gameOverScreen").style.display="block";
+
+        if(wave > highscore){
+            highscore = wave;
+            localStorage.setItem("highscore",highscore);
+            document.getElementById("highscore").innerText = highscore;
+        }
     }
-  });
 
-  requestAnimationFrame(update);
+    if(enemies.length===0 && !gameOver){
+        wave++;
+        document.getElementById("wave").innerText = wave;
+        for(let i=0;i<wave*3;i++) spawnEnemy();
+    }
 }
 
-update();
-</script>
+function draw(){
 
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    let angle = Math.atan2(mouse.y-player.y,mouse.x-player.x);
+
+    ctx.save();
+    ctx.translate(player.x,player.y);
+    ctx.rotate(angle);
+
+    let aspect = heroImg.naturalWidth/heroImg.naturalHeight;
+    let w = player.size;
+    let h = w/aspect;
+
+    ctx.drawImage(heroImg,-w/2,-h/2,w,h);
+    ctx.restore();
+
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = bulletColor;
+
+    ctx.fillStyle = bulletColor;
+    bullets.forEach(b=>{
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle="red";
+    enemies.forEach(e=>{
+        ctx.beginPath();
+        ctx.arc(e.x,e.y,e.size/2,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    ctx.fillStyle="orange";
+    particles.forEach(p=>{
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,4,0,Math.PI*2);
+        ctx.fill();
+    });
+}
+
+function restartGame(){
+    player.health=100;
+    player.x=canvas.width/2;
+    player.y=canvas.height/2;
+    bullets=[];
+    enemies=[];
+    particles=[];
+    wave=1;
+    gameOver=false;
+    document.getElementById("health").innerText=100;
+    document.getElementById("wave").innerText=1;
+    document.getElementById("gameOverScreen").style.display="none";
+    for(let i=0;i<3;i++) spawnEnemy();
+}
+
+function goHome(){
+    window.location.href="../index.html";
+}
+
+function loop(){
+    if(!gameOver){
+        update();
+        draw();
+    }
+    requestAnimationFrame(loop);
+}
+
+for(let i=0;i<3;i++) spawnEnemy();
+loop();
+
+</script>
 </body>
 </html>
