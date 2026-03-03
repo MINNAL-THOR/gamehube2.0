@@ -23,6 +23,14 @@ canvas { display: block; }
     border-radius: 10px;
 }
 
+.ui button{
+    margin-top:8px;
+    padding:5px 10px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
 #gameOverScreen {
     display:none;
     position:absolute;
@@ -53,6 +61,8 @@ canvas { display: block; }
 🌊 Wave: <span id="wave">1</span> |
 🪙 Coins: <span id="coins">0</span> |
 🏆 Highscore: <span id="highscore">0</span>
+<br>
+<button onclick="goHome()">🏠 Home / Customize</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -98,6 +108,7 @@ let player = {
 
 let bullets = [];
 let enemies = [];
+let particles = [];
 let keys = {};
 let mouse = {x:0,y:0};
 let wave = 1;
@@ -151,7 +162,6 @@ function update(){
     if(keys["a"]) player.x -= player.speed;
     if(keys["d"]) player.x += player.speed;
 
-    // Keep player inside screen
     player.x = Math.max(player.size/2, Math.min(canvas.width-player.size/2, player.x));
     player.y = Math.max(player.size/2, Math.min(canvas.height-player.size/2, player.y));
 
@@ -165,6 +175,18 @@ function update(){
                 bullets.splice(bi,1);
 
                 if(e.health<=0){
+
+                    // break animation
+                    for(let i=0;i<12;i++){
+                        particles.push({
+                            x:e.x,
+                            y:e.y,
+                            dx:(Math.random()-0.5)*6,
+                            dy:(Math.random()-0.5)*6,
+                            life:30
+                        });
+                    }
+
                     enemies.splice(ei,1);
                     coins+=5;
                     localStorage.setItem("coins",coins);
@@ -172,6 +194,13 @@ function update(){
                 }
             }
         });
+    });
+
+    particles.forEach((p,pi)=>{
+        p.x += p.dx;
+        p.y += p.dy;
+        p.life--;
+        if(p.life<=0) particles.splice(pi,1);
     });
 
     enemies.forEach(e=>{
@@ -221,7 +250,6 @@ function draw(){
     ctx.restore();
 
     ctx.fillStyle = bulletColor;
-
     bullets.forEach(b=>{
         ctx.beginPath();
         ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
@@ -234,6 +262,13 @@ function draw(){
         ctx.arc(e.x,e.y,e.size/2,0,Math.PI*2);
         ctx.fill();
     });
+
+    ctx.fillStyle="orange";
+    particles.forEach(p=>{
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,4,0,Math.PI*2);
+        ctx.fill();
+    });
 }
 
 function restartGame(){
@@ -242,6 +277,7 @@ function restartGame(){
     player.y=canvas.height/2;
     bullets=[];
     enemies=[];
+    particles=[];
     wave=1;
     gameOver=false;
     document.getElementById("health").innerText=100;
@@ -251,7 +287,7 @@ function restartGame(){
 }
 
 function goHome(){
-    window.location.href="index.html";
+    window.location.href="../index.html";
 }
 
 function loop(){
@@ -268,4 +304,3 @@ loop();
 </script>
 </body>
 </html>
-
