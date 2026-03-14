@@ -1,81 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Training Ground</title>
-
+<title>Abu's Training Ground</title>
 <style>
-
-body{
-margin:0;
-overflow:hidden;
-background:black;
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial;
+    color: white;
+    background: linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d);
 }
 
-/* CANVAS */
+canvas { display: block; }
 
-canvas{
-display:block;
+.ui {
+    position: absolute;
+    top: 10px;
+    left: 15px;
+    font-size: 18px;
+    background: rgba(0,0,0,0.4);
+    padding: 10px 15px;
+    border-radius: 10px;
 }
 
-/* JOYSTICKS */
-
-.joystick{
-position:fixed;
-width:140px;
-height:140px;
-border-radius:50%;
-background:rgba(255,255,255,0.08);
-border:2px solid rgba(255,255,255,0.2);
-z-index:10;
-display:none;
+.ui button{
+    margin-top:8px;
+    padding:5px 10px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
 }
 
-.stick{
-width:60px;
-height:60px;
-border-radius:50%;
-background:rgba(255,255,255,0.4);
-position:absolute;
-left:50%;
-top:50%;
-transform:translate(-50%,-50%);
+#gameOverScreen {
+    display:none;
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#111;
+    padding:40px;
+    border-radius:15px;
+    text-align:center;
+    box-shadow:0 0 25px red;
 }
 
-/* LEFT */
-
-#leftJoystick{
-bottom:40px;
-left:40px;
+#gameOverScreen button {
+    padding:10px 20px;
+    margin:5px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:16px;
 }
-
-/* RIGHT */
-
-#rightJoystick{
-bottom:40px;
-right:40px;
-}
-
-/* SHOW ON MOBILE */
-
-@media (hover:none){
-.joystick{
-display:block;
-}
-}
-
 </style>
 </head>
-
 <body>
+
+<div class="ui">
+❤️ Health: <span id="health">100</span> |
+🌊 Wave: <span id="wave">1</span> |
+🪙 Coins: <span id="coins">0</span> |
+🏆 Highscore: <span id="highscore">0</span>
+<br>
+<button onclick="goHome()">🏠 Home</button>
+</div>
 
 <canvas id="gameCanvas"></canvas>
 
-<div id="leftJoystick" class="joystick">
-<div class="stick"></div>
-</div>
-
-<div id="rightJoystick" class="joystick">
-<div class="stick"></div>
+<div id="gameOverScreen">
+    <h2>💀 Game Over</h2>
+    <button onclick="restartGame()">Restart</button>
+    <button onclick="goHome()">Home</button>
 </div>
 
 <script>
@@ -89,226 +84,252 @@ canvas.height = window.innerHeight;
 let heroImg = new Image();
 heroImg.src = "../assets/hero.png";
 
-let mouse = { x: canvas.width/2, y: canvas.height/2 };
+/* ========= BULLET SYSTEM ========= */
+
+let equipped = localStorage.getItem("equippedBullet") || "default";
+
+let bulletColor = "yellow";
+let bulletDamage = 1;
+let bulletSize = 6;
+
+if(equipped === "rare"){
+    bulletColor = "cyan";
+    bulletDamage = 2;
+    bulletSize = 8;
+}
+if(equipped === "epic"){
+    bulletColor = "violet";
+    bulletDamage = 3;
+    bulletSize = 10;
+}
+if(equipped === "legendary"){
+    bulletColor = "gold";
+    bulletDamage = 5;
+    bulletSize = 14;
+}
+
+/* ================================== */
+
+let coins = parseInt(localStorage.getItem("coins")) || 0;
+let highscore = parseInt(localStorage.getItem("highscore")) || 0;
+
+document.getElementById("coins").innerText = coins;
+document.getElementById("highscore").innerText = highscore;
 
 let player = {
-x: canvas.width/2,
-y: canvas.height/2,
-size: 220,
-speed: 4,
-angle: 0
+    x: canvas.width/2,
+    y: canvas.height/2,
+    size: 220,
+    speed: 4,
+    health: 100
 };
 
 let bullets = [];
+let enemies = [];
+let particles = [];
 let keys = {};
+let mouse = {x:0,y:0};
+let wave = 1;
+let gameOver = false;
 
-/* AUTO FIRE */
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-let lastShot = 0;
-let fireRate = 150;
-
-/* JOYSTICKS */
-
-const leftJoy = document.getElementById("leftJoystick");
-const rightJoy = document.getElementById("rightJoystick");
-
-const leftStick = leftJoy.querySelector(".stick");
-const rightStick = rightJoy.querySelector(".stick");
-
-let leftTouch = null;
-let rightTouch = null;
-
-let leftStart = {x:0,y:0};
-let rightStart = {x:0,y:0};
-
-/* DESKTOP INPUT */
-
-document.addEventListener("mousemove",(e)=>{
-const rect = canvas.getBoundingClientRect();
-mouse.x = e.clientX - rect.left;
-mouse.y = e.clientY - rect.top;
+document.addEventListener("mousemove", e=>{
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
 });
 
-document.addEventListener("keydown",e=>keys[e.key.toLowerCase()] = true);
-document.addEventListener("keyup",e=>keys[e.key.toLowerCase()] = false);
-
-document.addEventListener("click",shoot);
-
-/* MOBILE TOUCH */
-
-canvas.addEventListener("touchstart",(e)=>{
-
-for(let t of e.changedTouches){
-
-if(t.clientX < canvas.width/2 && leftTouch === null){
-leftTouch = t.identifier;
-leftStart.x = t.clientX;
-leftStart.y = t.clientY;
-}
-
-else if(t.clientX >= canvas.width/2 && rightTouch === null){
-rightTouch = t.identifier;
-rightStart.x = t.clientX;
-rightStart.y = t.clientY;
-}
-
-}
-
-});
-
-canvas.addEventListener("touchmove",(e)=>{
-
-for(let t of e.changedTouches){
-
-/* LEFT MOVE */
-
-if(t.identifier === leftTouch){
-
-let dx = t.clientX - leftStart.x;
-let dy = t.clientY - leftStart.y;
-
-player.x += dx * 0.05;
-player.y += dy * 0.05;
-
-leftStick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-}
-
-/* RIGHT AIM */
-
-if(t.identifier === rightTouch){
-
-mouse.x = t.clientX;
-mouse.y = t.clientY;
-
-let dx = t.clientX - rightStart.x;
-let dy = t.clientY - rightStart.y;
-
-rightStick.style.transform = `translate(${dx}px, ${dy}px)`;
-
-let now = Date.now();
-
-if(now - lastShot > fireRate){
-shoot();
-lastShot = now;
-}
-
-}
-
-}
-
-});
-
-canvas.addEventListener("touchend",(e)=>{
-
-for(let t of e.changedTouches){
-
-if(t.identifier === leftTouch){
-leftTouch = null;
-}
-
-if(t.identifier === rightTouch){
-rightTouch = null;
-}
-
-}
-
-leftStick.style.transform = "translate(-50%,-50%)";
-rightStick.style.transform = "translate(-50%,-50%)";
-
-});
-
-/* SHOOT */
+document.addEventListener("click", ()=> shoot());
 
 function shoot(){
+    if(gameOver) return;
 
-let aspect = heroImg.naturalWidth / heroImg.naturalHeight;
-let width = player.size;
-let height = width / aspect;
+    let angle = Math.atan2(mouse.y-player.y, mouse.x-player.x);
 
-let forward = player.angle - Math.PI/2;
-
-let noseX = player.x + Math.cos(forward)*(height/2);
-let noseY = player.y + Math.sin(forward)*(height/2);
-
-let speed = 10;
-
-bullets.push({
-x:noseX,
-y:noseY,
-dx:Math.cos(forward)*speed,
-dy:Math.sin(forward)*speed,
-size:8
-});
-
+    bullets.push({
+        x:player.x,
+        y:player.y,
+        dx:Math.cos(angle)*8,
+        dy:Math.sin(angle)*8,
+        size:bulletSize
+    });
 }
 
-/* UPDATE */
+function spawnEnemy(){
+    let edge = Math.floor(Math.random()*4);
+    let x,y;
+
+    if(edge===0){x=0;y=Math.random()*canvas.height;}
+    if(edge===1){x=canvas.width;y=Math.random()*canvas.height;}
+    if(edge===2){x=Math.random()*canvas.width;y=0;}
+    if(edge===3){x=Math.random()*canvas.width;y=canvas.height;}
+
+    enemies.push({
+        x,y,
+        size:40,
+        speed:1.5 + wave*0.2,
+        health:3 + wave
+    });
+}
 
 function update(){
 
-if(keys["w"]) player.y -= player.speed;
-if(keys["s"]) player.y += player.speed;
-if(keys["a"]) player.x -= player.speed;
-if(keys["d"]) player.x += player.speed;
+    if(keys["w"]) player.y -= player.speed;
+    if(keys["s"]) player.y += player.speed;
+    if(keys["a"]) player.x -= player.speed;
+    if(keys["d"]) player.x += player.speed;
 
-player.angle = Math.atan2(mouse.y-player.y,mouse.x-player.x);
+    player.x = Math.max(player.size/2, Math.min(canvas.width-player.size/2, player.x));
+    player.y = Math.max(player.size/2, Math.min(canvas.height-player.size/2, player.y));
 
-for(let i=bullets.length-1;i>=0;i--){
+    for(let bi = bullets.length-1; bi>=0; bi--){
+        let b = bullets[bi];
+        b.x+=b.dx;
+        b.y+=b.dy;
 
-let b = bullets[i];
+        for(let ei = enemies.length-1; ei>=0; ei--){
+            let e = enemies[ei];
 
-b.x += b.dx;
-b.y += b.dy;
+            if(Math.hypot(b.x-e.x,b.y-e.y)<25){
 
-if(b.x<0 || b.x>canvas.width || b.y<0 || b.y>canvas.height){
-bullets.splice(i,1);
+                e.health -= bulletDamage;
+                bullets.splice(bi,1);
+
+                if(e.health<=0){
+
+                    for(let i=0;i<12;i++){
+                        particles.push({
+                            x:e.x,
+                            y:e.y,
+                            dx:(Math.random()-0.5)*6,
+                            dy:(Math.random()-0.5)*6,
+                            life:30
+                        });
+                    }
+
+                    enemies.splice(ei,1);
+                    coins+=5;
+                    localStorage.setItem("coins",coins);
+                    document.getElementById("coins").innerText = coins;
+                }
+
+                break;
+            }
+        }
+    }
+
+    for(let pi = particles.length-1; pi>=0; pi--){
+        let p = particles[pi];
+        p.x += p.dx;
+        p.y += p.dy;
+        p.life--;
+        if(p.life<=0) particles.splice(pi,1);
+    }
+
+    enemies.forEach(e=>{
+        let angle = Math.atan2(player.y-e.y, player.x-e.x);
+        e.x+=Math.cos(angle)*e.speed;
+        e.y+=Math.sin(angle)*e.speed;
+
+        if(Math.hypot(player.x-e.x,player.y-e.y)<50){
+            player.health-=0.5;
+            document.getElementById("health").innerText = Math.floor(player.health);
+        }
+    });
+
+    if(player.health<=0 && !gameOver){
+        gameOver=true;
+        document.getElementById("gameOverScreen").style.display="block";
+
+        if(wave > highscore){
+            highscore = wave;
+            localStorage.setItem("highscore",highscore);
+            document.getElementById("highscore").innerText = highscore;
+        }
+    }
+
+    if(enemies.length===0 && !gameOver){
+        wave++;
+        document.getElementById("wave").innerText = wave;
+        for(let i=0;i<wave*3;i++) spawnEnemy();
+    }
 }
-
-}
-
-}
-
-/* DRAW */
 
 function draw(){
 
-ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-ctx.save();
+    let angle = Math.atan2(mouse.y-player.y,mouse.x-player.x);
 
-ctx.translate(player.x,player.y);
-ctx.rotate(player.angle + Math.PI/2);
+    ctx.save();
+    ctx.translate(player.x,player.y);
+    ctx.rotate(angle);
 
-let aspect = heroImg.naturalWidth / heroImg.naturalHeight;
-let width = player.size;
-let height = width / aspect;
+    let aspect = heroImg.naturalWidth/heroImg.naturalHeight;
+    let w = player.size;
+    let h = w/aspect;
 
-ctx.drawImage(heroImg,-width/2,-height/2,width,height);
+    ctx.drawImage(heroImg,-w/2,-h/2,w,h);
+    ctx.restore();
 
-ctx.restore();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = bulletColor;
 
-ctx.fillStyle="yellow";
+    ctx.fillStyle = bulletColor;
+    bullets.forEach(b=>{
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
+        ctx.fill();
+    });
 
-bullets.forEach(b=>{
-ctx.beginPath();
-ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
-ctx.fill();
-});
+    ctx.shadowBlur = 0;
 
+    ctx.fillStyle="red";
+    enemies.forEach(e=>{
+        ctx.beginPath();
+        ctx.arc(e.x,e.y,e.size/2,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    ctx.fillStyle="orange";
+    particles.forEach(p=>{
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,4,0,Math.PI*2);
+        ctx.fill();
+    });
 }
 
-/* LOOP */
+function restartGame(){
+    player.health=100;
+    player.x=canvas.width/2;
+    player.y=canvas.height/2;
+    bullets=[];
+    enemies=[];
+    particles=[];
+    wave=1;
+    gameOver=false;
+    document.getElementById("health").innerText=100;
+    document.getElementById("wave").innerText=1;
+    document.getElementById("gameOverScreen").style.display="none";
+    for(let i=0;i<3;i++) spawnEnemy();
+}
+
+function goHome(){
+    window.location.href="../index.html";
+}
 
 function loop(){
-update();
-draw();
-requestAnimationFrame(loop);
+    if(!gameOver){
+        update();
+        draw();
+    }
+    requestAnimationFrame(loop);
 }
 
+for(let i=0;i<3;i++) spawnEnemy();
 loop();
 
 </script>
-
 </body>
 </html>
