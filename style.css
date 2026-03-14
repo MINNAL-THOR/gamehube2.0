@@ -1,165 +1,55 @@
-/* ================= GLOBAL RESET ================= */
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Arial, sans-serif;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
 }
 
-/* ================= BODY ================= */
-
-body{
-min-height:100vh;
-overflow:hidden;
-
-background:linear-gradient(-45deg,#ff416c,#ff4b2b,#1e90ff,#00ffb3);
-background-size:400% 400%;
-animation:gradientBG 12s ease infinite;
-
-display:flex;
-justify-content:center;
-align-items:center;
-
-color:white;
+body {
+  min-height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(-45deg, #ff416c, #ff4b2b, #1e90ff, #00ffb3);
+  background-size: 400% 400%;
+  animation: gradientBG 12s ease infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
 }
 
-/* ================= BACKGROUND ANIMATION ================= */
-
-@keyframes gradientBG{
-
-0%{background-position:0% 50%;}
-50%{background-position:100% 50%;}
-100%{background-position:0% 50%;}
-
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-/* ================= MAIN CONTAINER ================= */
-
-.container{
-
-text-align:center;
-
-backdrop-filter:blur(10px);
-
-background:rgba(0,0,0,0.4);
-
-padding:40px;
-
-border-radius:20px;
-
-box-shadow:0 0 40px rgba(0,0,0,0.4);
-
+.container {
+  text-align: center;
+  backdrop-filter: blur(10px);
+  background: rgba(0,0,0,0.4);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.4);
 }
 
-/* ================= HEADINGS ================= */
-
-h1{
-
-font-size:50px;
-margin-bottom:20px;
-
+h1 {
+  font-size: 50px;
+  margin-bottom: 20px;
 }
 
-/* ================= BUTTONS ================= */
-
-button{
-
-padding:12px 25px;
-
-margin:10px;
-
-border:none;
-
-border-radius:30px;
-
-font-size:18px;
-
-cursor:pointer;
-
-background:white;
-
-color:black;
-
-transition:0.3s;
-
+button {
+  padding: 12px 25px;
+  margin: 10px;
+  border: none;
+  border-radius: 30px;
+  font-size: 18px;
+  cursor: pointer;
+  background: white;
+  color: black;
+  transition: 0.3s;
 }
 
-/* BUTTON HOVER */
-
-button:hover{
-
-transform:scale(1.1);
-
-background:gold;
-
-}
-
-/* ================= MOBILE JOYSTICKS ================= */
-
-.joystick{
-
-position:fixed;
-
-width:140px;
-height:140px;
-
-border-radius:50%;
-
-background:rgba(255,255,255,0.08);
-
-border:2px solid rgba(255,255,255,0.2);
-
-z-index:100;
-
-display:none;
-
-}
-
-/* INNER STICK */
-
-.stick{
-
-width:60px;
-height:60px;
-
-border-radius:50%;
-
-background:rgba(255,255,255,0.4);
-
-position:absolute;
-
-left:50%;
-top:50%;
-
-transform:translate(-50%,-50%);
-
-}
-
-/* LEFT JOYSTICK */
-
-#leftJoystick{
-
-bottom:40px;
-left:40px;
-
-}
-
-/* RIGHT JOYSTICK */
-
-#rightJoystick{
-
-bottom:40px;
-right:40px;
-
-}
-
-/* SHOW JOYSTICKS ONLY ON TOUCH DEVICES */
-
-@media (hover:none){
-
-.joystick{
-display:block;
-}
-
+button:hover {
+  transform: scale(1.1);
+  background: gold;
 }
